@@ -6,11 +6,9 @@
   <style>
     body {
       font-family: Arial, sans-serif;
+      background: linear-gradient(to bottom right, #ffb6c1, #ffc0cb);
       text-align: center;
-      background: pink;
-    }
-    h1 {
-      margin-top: 30px;
+      margin-top: 50px;
     }
     .tabuleiro {
       display: grid;
@@ -22,115 +20,121 @@
     .carta {
       width: 100px;
       height: 100px;
-      background: gray;
+      background-color: gray;
       color: white;
+      font-size: 15px;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      font-weight: bold;
       border-radius: 10px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-      font-size: 18px;
+      box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
     }
-    .mensagem {
+    #mensagem {
       margin-top: 20px;
-      font-size: 18px;
+      font-size: 20px;
     }
-    #reiniciar {
-      margin-top: 10px;
-      padding: 5px 10px;
-      background: salmon;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    .dino {
+    .dinossauro {
       position: fixed;
       bottom: 20px;
       right: 20px;
-      font-size: 50px;
+      font-size: 40px;
     }
   </style>
 </head>
 <body>
   <h1>Jogo da Memória do Ravi</h1>
-  <div class="tabuleiro" id="tabuleiro"></div>
-  <div class="mensagem" id="mensagem"></div>
-  <button id="reiniciar" onclick="iniciarJogo()">Reiniciar</button>
-  <div class="dino">🦖</div>
-
-  <audio id="somParabens" src="parabens.mp3"></audio>
-  <audio id="somAzul" src="azul.mp3"></audio>
-  <audio id="somVerde" src="verde.mp3"></audio>
-  <audio id="somRosa" src="rosa.mp3"></audio>
-  <audio id="somVermelho" src="vermelho.mp3"></audio>
+  <div class="tabuleiro"></div>
+  <div id="mensagem"></div>
+  <button onclick="reiniciar()">Reiniciar</button>
+  <div class="dinossauro">🦕</div>
 
   <script>
-    const cores = ['ROSA', 'AZUL', 'VERDE', 'VERMELHO', 'ROSA', 'AZUL', 'VERDE', 'VERMELHO'];
+    const cores = ['AZUL', 'AZUL', 'VERDE', 'VERDE', 'ROSA', 'ROSA', 'VERMELHO', 'VERMELHO'];
     let cartasViradas = [];
-    let cartasEncontradas = [];
+    let bloqueio = false;
 
-    function iniciarJogo() {
-      cartasViradas = [];
-      cartasEncontradas = [];
-      document.getElementById('mensagem').innerText = '';
-      const tabuleiro = document.getElementById('tabuleiro');
+    const audios = {
+      AZUL: new Audio('azul.mp3'),
+      VERDE: new Audio('verde.mp3'),
+      ROSA: new Audio('rosa.mp3'),
+      VERMELHO: new Audio('vermelho.mp3'),
+      PARABENS: new Audio('parabenos.mp3'),
+      BEMVINDO: new Audio('bemvindo.mp3')
+    };
+
+    const tabuleiro = document.querySelector('.tabuleiro');
+    const mensagem = document.getElementById('mensagem');
+
+    audios.BEMVINDO.play();
+
+    function embaralhar(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+
+    function criarTabuleiro() {
       tabuleiro.innerHTML = '';
-      
-      const embaralhadas = cores.sort(() => 0.5 - Math.random());
+      embaralhar(cores);
 
-      embaralhadas.forEach(cor => {
+      cores.forEach(cor => {
         const carta = document.createElement('div');
-        carta.className = 'carta';
+        carta.classList.add('carta');
         carta.dataset.cor = cor;
-        carta.onclick = () => virarCarta(carta);
-        carta.innerText = '?';
+        carta.textContent = '?';
+
+        carta.addEventListener('click', () => {
+          if (bloqueio || carta.textContent !== '?') return;
+
+          carta.textContent = cor;
+          carta.style.backgroundColor = cor.toLowerCase();
+
+          // Executa o som da cor
+          audios[cor].play();
+
+          cartasViradas.push(carta);
+
+          if (cartasViradas.length === 2) {
+            verificarPar();
+          }
+        });
+
         tabuleiro.appendChild(carta);
       });
     }
 
-    function virarCarta(carta) {
-      if (cartasViradas.length < 2 && !cartasViradas.includes(carta) && !cartasEncontradas.includes(carta)) {
-        const cor = carta.dataset.cor;
-        carta.innerText = cor;
-
-        if (cor === 'ROSA') carta.style.background = 'deeppink';
-        if (cor === 'AZUL') carta.style.background = 'blue';
-        if (cor === 'VERDE') carta.style.background = 'green';
-        if (cor === 'VERMELHO') carta.style.background = 'red';
-
-        carta.style.fontSize = cor === 'VERMELHO' ? '15px' : '18px';
-
-        document.getElementById('som' + cor.charAt(0) + cor.slice(1).toLowerCase()).play();
-
-        cartasViradas.push(carta);
-
-        if (cartasViradas.length === 2) {
-          setTimeout(verificarPar, 500);
-        }
-      }
-    }
-
     function verificarPar() {
+      bloqueio = true;
       const [carta1, carta2] = cartasViradas;
+
       if (carta1.dataset.cor === carta2.dataset.cor) {
-        cartasEncontradas.push(carta1, carta2);
-        if (cartasEncontradas.length === cores.length) {
-          document.getElementById('mensagem').innerText = '🎉 Parabéns Ravi! Você completou o jogo! 🎉';
-          document.getElementById('somParabens').play();
+        mensagem.innerHTML = `🎉 Parabéns Ravi! Você acertou ${carta1.dataset.cor}! 🎉`;
+        if (document.querySelectorAll('.carta').length === document.querySelectorAll('.carta[style*="background-color"]').length) {
+          mensagem.innerHTML = `🎉 Parabéns Ravi! Você completou o jogo! 🎉`;
+          audios.PARABENS.play();
         }
+        cartasViradas = [];
+        bloqueio = false;
       } else {
-        carta1.innerText = '?';
-        carta2.innerText = '?';
-        carta1.style.background = 'gray';
-        carta2.style.background = 'gray';
+        setTimeout(() => {
+          carta1.textContent = '?';
+          carta1.style.backgroundColor = 'gray';
+          carta2.textContent = '?';
+          carta2.style.backgroundColor = 'gray';
+          cartasViradas = [];
+          bloqueio = false;
+        }, 1000);
       }
-      cartasViradas = [];
     }
 
-    iniciarJogo();
+    function reiniciar() {
+      criarTabuleiro();
+      mensagem.textContent = '';
+    }
+
+    criarTabuleiro();
   </script>
 </body>
 </html>
